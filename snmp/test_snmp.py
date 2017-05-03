@@ -205,7 +205,7 @@ class SNMPTestCase(AgentCheckTest):
         if priv:
             instance_config['privProtocol'] = priv
         if priv_key:
-            instance_config['privKey'] = privKey
+            instance_config['privKey'] = priv_key
 
         return instance_config
 
