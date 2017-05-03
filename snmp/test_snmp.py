@@ -3,7 +3,6 @@
 # Licensed under Simplified BSD License (see LICENSE)
 
 # stdlib
-from collections import namedtuple
 import copy
 import time
 
@@ -22,9 +21,6 @@ from tests.checks.common import AgentCheckTest
 
 RESULTS_TIMEOUT = 10
 
-from nose.plugins.attrib import attr
-
-AuthSettings = namedtuple('AuthSettings', ['authProtocol', 'privProtocol', 'authKey', 'privKey'])
 
 @attr(requires='snmp')
 class SNMPTestCase(AgentCheckTest):
@@ -373,9 +369,9 @@ class SNMPTestCase(AgentCheckTest):
                         self.TABULAR_OBJECTS,
                         name='instance_{}_{}'.format(auth, priv),
                         user='datadog{}{}'.format(auth.upper(), priv.upper()),
-                        auth=auth
-                        auth_key=self.AUTH_KEY
-                        priv=priv
+                        auth=auth,
+                        auth_key=self.AUTH_KEY,
+                        priv=priv,
                         priv_key=self.PRIV_KEY
                     )
                 )
