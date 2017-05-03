@@ -365,12 +365,12 @@ class SNMPTestCase(AgentCheckTest):
         tags = []
         for auth in self.AUTH_PROTOCOLS:
             for priv in self.PRIV_PROTOCOLS:
+                name = 'instance_{}_{}'.format(auth, priv)
+                tags.append('snmp_device:{}'.format(name)
                 config['instances'].append(
-                    name = 'instance_{}_{}'.format(auth, priv)
-                    tags.append('snmp_device:{}'.format(name)
                     self.generate_v3_instance_config(
                         self.TABULAR_OBJECTS,
-                        name='instance_{}_{}'.format(auth, priv),
+                        name=name,
                         user='datadog{}{}'.format(auth.upper(), priv.upper()),
                         auth=auth,
                         auth_key=self.AUTH_KEY,
