@@ -362,9 +362,12 @@ class SNMPTestCase(AgentCheckTest):
         }
 
         # build multiple confgs
+        tags = []
         for auth in self.AUTH_PROTOCOLS:
             for priv in self.PRIV_PROTOCOLS:
                 config['instances'].append(
+                    name = 'instance_{}_{}'.format(auth, priv)
+                    tags.append('snmp_device:{}'.format(name)
                     self.generate_v3_instance_config(
                         self.TABULAR_OBJECTS,
                         name='instance_{}_{}'.format(auth, priv),
@@ -381,14 +384,15 @@ class SNMPTestCase(AgentCheckTest):
         self.service_checks = self.wait_for_async('get_service_checks', 'service_checks', 4)
 
         # Test metrics
-        for symbol in self.TABULAR_OBJECTS[0]['symbols']:
-            metric_name = "snmp." + symbol
-            self.assertMetric(metric_name, at_least=4)
-            self.assertMetricTag(metric_name, self.CHECK_TAGS[0], at_least=4)
+        for device_tag in tags:
+            for symbol in self.TABULAR_OBJECTS[0]['symbols']:
+                metric_name = "snmp." + symbol
+                self.assertMetric(metric_name, at_least=4)
+                self.assertMetricTag(metric_name, device_tag, at_least=1)
 
-            for mtag in self.TABULAR_OBJECTS[0]['metric_tags']:
-                tag = mtag['tag']
-                self.assertMetricTagPrefix(metric_name, tag, at_least=1)
+                for mtag in self.TABULAR_OBJECTS[0]['metric_tags']:
+                    tag = mtag['tag']
+                    self.assertMetricTagPrefix(metric_name, tag, at_least=1)
 
         # Test service check
         self.assertServiceCheck("snmp.can_check", status=AgentCheck.OK,
