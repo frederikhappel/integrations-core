@@ -3,9 +3,12 @@
 # Licensed under Simplified BSD License (see LICENSE)
 
 # stdlib
-from nose.plugins.attrib import attr
+from collections import namedtuple
 import copy
 import time
+
+# 3rd party
+from nose.plugins.attrib import attr
 
 # agent
 from checks import AgentCheck
@@ -19,16 +22,34 @@ from tests.checks.common import AgentCheckTest
 
 RESULTS_TIMEOUT = 10
 
+from nose.plugins.attrib import attr
+
+AuthSettings = namedtuple('AuthSettings', ['authProtocol', 'privProtocol', 'authKey', 'privKey'])
 
 @attr(requires='snmp')
 class SNMPTestCase(AgentCheckTest):
     CHECK_NAME = 'snmp'
     CHECK_TAGS = ['snmp_device:localhost']
 
+    AUTH_PROTOCOLS = ['MD5', 'SHA']
+    PRIV_PROTOCOLS = ['DES', 'AES']
+    AUTH_KEY='doggiepass'
+    PRIV_KEY='doggiePRIVkey'
+
     SNMP_CONF = {
         'ip_address': "localhost",
         'port': 11111,
         'community_string': "public",
+    }
+
+    SNMP_V3_CONF = {
+        'ip_address': "localhost",
+        'port': 11111,
+        'user': None,
+        'authKey': None,
+        'privKey': None,
+        'authProtocol': None,
+        'privProtocol': None,
     }
 
     MIBS_FOLDER = {
@@ -165,10 +186,31 @@ class SNMPTestCase(AgentCheckTest):
             self.check.stop()
 
     @classmethod
-    def generate_instance_config(cls, metrics):
-        instance_config = copy.copy(cls.SNMP_CONF)
+    def generate_instance_config(cls, metrics, template=None):
+        template = template if template else cls.SNMP_CONF
+        instance_config = copy.copy(template)
         instance_config['metrics'] = metrics
         instance_config['name'] = "localhost"
+        return instance_config
+
+    @classmethod
+    def generate_v3_instance_config(cls, metrics, name=None, user=None,
+                                    auth=None, auth_key=None, priv=None, priv_key=None):
+        instance_config = cls.generate_instance_config(metrics, cls.SNMP_V3_CONF)
+
+        if name:
+            instance_config['name'] = name
+        if user:
+            instance_config['user'] = user
+        if auth:
+            instance_config['authProtocol'] = auth
+        if auth_key:
+            instance_config['authKey'] = auth_key
+        if priv:
+            instance_config['privProtocol'] = priv
+        if priv_key:
+            instance_config['privKey'] = privKey
+
         return instance_config
 
     def wait_for_async(self, method, attribute, count):
@@ -313,6 +355,51 @@ class SNMPTestCase(AgentCheckTest):
                                 tags=self.CHECK_TAGS, count=1)
 
         self.coverage_report()
+
+
+    def test_table_v3_priv(self):
+        """
+        Support SNMP V3 priv modes: MD5/SHA + DES/AES
+        """
+        config = {
+            'instances': []
+        }
+
+        # build multiple confgs
+        for auth in self.AUTH_PROTOCOLS:
+            for priv in self.PRIV_PROTOCOLS:
+                config['instances'].append(
+                    self.generate_v3_instance_config(
+                        self.TABULAR_OBJECTS,
+                        name='instance_{}_{}'.format(auth, priv),
+                        user='datadog{}{}'.format(auth.upper(), priv.upper()),
+                        auth=auth
+                        auth_key=self.AUTH_KEY
+                        priv=priv
+                        priv_key=self.PRIV_KEY
+                    )
+                )
+
+
+        self.run_check_n(config, repeat=3, sleep=2)
+        self.service_checks = self.wait_for_async('get_service_checks', 'service_checks', 4)
+
+        # Test metrics
+        for symbol in self.TABULAR_OBJECTS[0]['symbols']:
+            metric_name = "snmp." + symbol
+            self.assertMetric(metric_name, at_least=4)
+            self.assertMetricTag(metric_name, self.CHECK_TAGS[0], at_least=4)
+
+            for mtag in self.TABULAR_OBJECTS[0]['metric_tags']:
+                tag = mtag['tag']
+                self.assertMetricTagPrefix(metric_name, tag, at_least=1)
+
+        # Test service check
+        self.assertServiceCheck("snmp.can_check", status=AgentCheck.OK,
+                                tags=self.CHECK_TAGS, count=4)
+
+        self.coverage_report()
+
 
     def test_invalid_metric(self):
         """
