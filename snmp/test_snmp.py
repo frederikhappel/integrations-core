@@ -366,7 +366,7 @@ class SNMPTestCase(AgentCheckTest):
         for auth in self.AUTH_PROTOCOLS:
             for priv in self.PRIV_PROTOCOLS:
                 name = 'instance_{}_{}'.format(auth, priv)
-                tags.append('snmp_device:{}'.format(name)
+                tags.append('snmp_device:{}'.format(name))
                 config['instances'].append(
                     self.generate_v3_instance_config(
                         self.TABULAR_OBJECTS,
