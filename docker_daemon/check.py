@@ -155,9 +155,6 @@ class DockerDaemon(AgentCheck):
         AgentCheck.__init__(self, name, init_config,
                             agentConfig, instances=instances)
 
-        self.nomadutil = NomadUtil()
-        self.nomadutil.init_platform(agentConfig)
-
         self.init_success = False
         self.docker_client = None
         self._service_discovery = agentConfig.get('service_discovery') and \
@@ -180,6 +177,9 @@ class DockerDaemon(AgentCheck):
                     self.kubeutil = None
                     self.log.error("Couldn't instantiate the kubernetes client, "
                         "subsequent kubernetes calls will fail as well. Error: %s" % str(ex))
+
+            elif Platform.is_nomad():
+                self.nomadutil = NomadUtil()
 
             # We configure the check with the right cgroup settings for this host
             # Just needs to be done once
